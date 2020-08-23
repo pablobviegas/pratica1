@@ -3,7 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
-const bit<16> TYPE_UDP = 17;
+/*const bit<16> TYPE_UDP = 17;*/
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -74,10 +74,11 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        transition select(hdr.ipv4.protocol){
+        /*transition select(hdr.ipv4.protocol){
             TYPE_UDP: udp;
-            default: drop;
-        }
+            default: accept;
+        }*/
+        transition accept;
         
     }
 
@@ -115,9 +116,9 @@ control MyIngress(inout headers hdr,
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
-    action udp_drop(){
+    /*action udp_drop(){
 
-    }
+    }*/
     
     table ipv4_lpm {
         key = {
@@ -136,9 +137,9 @@ control MyIngress(inout headers hdr,
         if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
         }
-        if (hdr.udp.isValid()) {
+        /*if (hdr.udp.isValid()) {
             udp_lpm.apply();
-        }
+        }*/
     }
 }
 

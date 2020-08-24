@@ -3,7 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
-/*const bit<16> TYPE_UDP = 17;*/
+const bit<8> TYPE_UDP = 17;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -74,12 +74,11 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
-        /*transition select(hdr.ipv4.protocol){
-            TYPE_UDP: udp;
+        transition select(hdr.ipv4.protocol){
+            TYPE_UDP: parse_udp;
             default: accept;
-        }*/
-        transition accept;
-        
+        }
+        /*transition accept;*/
     }
 
     state parse_udp {
@@ -105,8 +104,14 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+    
+    counter(10,CounterType.packets) pcts;
+    counter(10,CounterType.bytes) tamanho;
+    
     action drop() {
         mark_to_drop(standard_metadata);
+        pcts.count(0);
+        tamanho.count(0);
     }
     
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -114,12 +119,11 @@ control MyIngress(inout headers hdr,
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        pcts.count(1);
+        tamanho.count(1);
+
     }
 
-    /*action udp_drop(){
-
-    }*/
-    
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -135,11 +139,12 @@ control MyIngress(inout headers hdr,
     
     apply {
         if (hdr.ipv4.isValid()) {
-            ipv4_lpm.apply();
+            if (hdr.ipv4.protocol == TYPE_UDP){
+                drop();
+            }else{
+                ipv4_lpm.apply();
+            }
         }
-        /*if (hdr.udp.isValid()) {
-            udp_lpm.apply();
-        }*/
     }
 }
 
